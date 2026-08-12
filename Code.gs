@@ -128,7 +128,8 @@ function kumpulNamaFail_(folder, hasil, kedalaman) {
   while (files.hasNext()) {
     const file = files.next();
     const nama = file.getName();
-    if (/\.pdf$/i.test(nama)) {
+    // Kumpul fail PDF + fail bernombor IC (tanpa extension)
+    if (/\.pdf$/i.test(nama) || /\d{12}/.test(nama)) {
       hasil.push(nama + (kedalaman > 0 ? '   [sub-folder]' : ''));
     }
   }
@@ -138,13 +139,13 @@ function kumpulNamaFail_(folder, hasil, kedalaman) {
   }
 }
 
-// Kumpul nama fail PDF sahaja (tanpa tanda sub-folder)
+// Kumpul nama fail (PDF + IC tanpa extension) untuk pengiraan
 function kumpulNamaFailPdf_(folder, senarai) {
   const files = folder.getFiles();
   while (files.hasNext()) {
     const file = files.next();
     const nama = file.getName();
-    if (/\.pdf$/i.test(nama)) {
+    if (/\.pdf$/i.test(nama) || /\d{12}/.test(nama)) {
       senarai.push(nama);
     }
   }
@@ -245,11 +246,12 @@ function scanFolder_(folder, failByIC) {
     const file = files.next();
     const namaAsal = file.getName();
     const namaLower = namaAsal.toLowerCase();
-    if (!/\.pdf$/.test(namaLower)) continue;
+    // Terima fail PDF ATAU fail bernombor IC tanpa extension
+    // (contoh: "130306011534" tanpa .pdf)
     
     // Cari 12 digit (No IC) di mana-mana dalam nama fail
     const matchIC = namaLower.match(/(\d{12})/);
-    if (!matchIC) continue;  // tiada IC — diabaikan (atau padan nama di tempat lain)
+    if (!matchIC) continue;  // tiada IC — diabaikan
     
     const ic = matchIC[1];
     if (!failByIC[ic]) failByIC[ic] = {};
