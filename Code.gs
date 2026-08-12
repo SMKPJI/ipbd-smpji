@@ -196,7 +196,7 @@ function autoLinkLaporan() {
     const semuaPdf = [];
     kumpulNamaFailPdf_(folder, semuaPdf);
     const dahRename = semuaPdf.filter(function (n) {
-      return /^\d{12}(-kemahiran)?\.pdf$/i.test(n);
+      return /\d{12}/.test(n);  // ada 12 digit = dah ada IC
     }).length;
     
     for (let i = 1; i < data.length; i++) {
@@ -238,26 +238,27 @@ function autoLinkLaporan() {
 }
 
 // Scan folder + semua sub-folder, kumpul fail mengikut IC
+// FLEKSIBEL: terima pelbagai format nama fail
 function scanFolder_(folder, failByIC) {
   const files = folder.getFiles();
   while (files.hasNext()) {
     const file = files.next();
-    const nama = file.getName().toLowerCase();
+    const namaAsal = file.getName();
+    const namaLower = namaAsal.toLowerCase();
+    if (!/\.pdf$/.test(namaLower)) continue;
     
-    // Slip keseluruhan: <12 digit>.pdf
-    let match = nama.match(/^(\d{12})\.pdf$/);
-    if (match) {
-      if (!failByIC[match[1]]) failByIC[match[1]] = {};
-      failByIC[match[1]].keseluruhan = file;
-      continue;
-    }
+    // Cari 12 digit (No IC) di mana-mana dalam nama fail
+    const matchIC = namaLower.match(/(\d{12})/);
+    if (!matchIC) continue;  // tiada IC — diabaikan (atau padan nama di tempat lain)
     
-    // Slip kemahiran: <12 digit>-kemahiran.pdf (case tak kira)
-    match = nama.match(/^(\d{12})-kemahiran\.pdf$/);
-    if (match) {
-      if (!failByIC[match[1]]) failByIC[match[1]] = {};
-      failByIC[match[1]].kemahiran = file;
-      continue;
+    const ic = matchIC[1];
+    if (!failByIC[ic]) failByIC[ic] = {};
+    
+    // Ada perkataan "kemahiran" → slip kemahiran (tak kira - _ ruang atau huruf besar)
+    if (namaLower.indexOf('kemahiran') !== -1) {
+      failByIC[ic].kemahiran = file;
+    } else {
+      failByIC[ic].keseluruhan = file;
     }
   }
   
