@@ -718,17 +718,27 @@ main {
 
 .table {
   width: 100%;
-  min-width: 640px;
+  min-width: 0;
   border-collapse: collapse;
   font-size: 0.92rem;
+  table-layout: fixed;
 }
 
 .table th,
 .table td {
-  padding: 12px 14px;
+  padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Lajur nama: biar bungkus & lebih luas supaya nama penuh nampak */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  width: 38%;
+  min-width: 200px;
+  white-space: normal;
 }
 
 .table thead th {
