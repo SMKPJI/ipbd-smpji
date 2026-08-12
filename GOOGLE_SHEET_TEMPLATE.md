@@ -12,7 +12,7 @@ namaSekolah,SMK (P) Jalan Ipoh
 logoUrl,
 warnaUtama,#3b82f6
 tahun,2026
-folderLaporan,PASTE_FOLDER_ID_DI_SINI
+folderLaporan,1Yq7WEviPVGFpYoECpezqA5En439k09VF
 kataLaluanAdmin,admin123
 ```
 

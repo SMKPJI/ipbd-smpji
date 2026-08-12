@@ -88,6 +88,73 @@ function seedData(ss) {
 }
 
 // ============================================================
+// 🔍 DIAGNOSTIK — SENARAI FAIL DALAM FOLDER
+// ============================================================
+// Run ini untuk tengok nama fail sebenar dalam folder.
+// Ini membantu cari punca "Tiada fail" — contoh nama tak padan.
+// ============================================================
+function senaraiFailFolder() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tetapan = getTetapanObj_(ss);
+  const folderId = tetapan.folderLaporan;
+  
+  if (!folderId || folderId.indexOf('PASTE_FOLDER_ID') !== -1) {
+    SpreadsheetApp.getUi().alert('⚠️ Sila set folderLaporan dahulu.');
+    return;
+  }
+  
+  try {
+    const folder = DriveApp.getFolderById(folderId);
+    const hasil = [];
+    kumpulNamaFail_(folder, hasil, 0);
+    
+    if (hasil.length === 0) {
+      SpreadsheetApp.getUi().alert('📂 Folder kosong atau tiada fail PDF ditemui.');
+      return;
+    }
+    
+    const teks = hasil.slice(0, 30).join('\n');
+    SpreadsheetApp.getUi().alert(
+      '📂 ' + hasil.length + ' fail ditemui. Contoh:\n\n' + teks +
+      (hasil.length > 30 ? '\n... dan ' + (hasil.length - 30) + ' lagi' : '')
+    );
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('❌ Ralat: ' + e.toString());
+  }
+}
+
+function kumpulNamaFail_(folder, hasil, kedalaman) {
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    const nama = file.getName();
+    if (/\.pdf$/i.test(nama)) {
+      hasil.push(nama + (kedalaman > 0 ? '   [sub-folder]' : ''));
+    }
+  }
+  const subFolders = folder.getFolders();
+  while (subFolders.hasNext()) {
+    kumpulNamaFail_(subFolders.next(), hasil, kedalaman + 1);
+  }
+}
+
+// Kumpul nama fail PDF sahaja (tanpa tanda sub-folder)
+function kumpulNamaFailPdf_(folder, senarai) {
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    const nama = file.getName();
+    if (/\.pdf$/i.test(nama)) {
+      senarai.push(nama);
+    }
+  }
+  const subFolders = folder.getFolders();
+  while (subFolders.hasNext()) {
+    kumpulNamaFailPdf_(subFolders.next(), senarai);
+  }
+}
+
+// ============================================================
 // ⭐ AUTO-LINK LAPORAN — TOLONG JANGAN BUAT MANUAL!
 // ============================================================
 // Padankan fail PDF dalam Google Drive dengan murid guna No IC
@@ -125,6 +192,13 @@ function autoLinkLaporan() {
     let kemahiran = 0;
     let tiadaFail = 0;
     
+    // Kira fail yang ada (untuk maklum berapa dah rename)
+    const semuaPdf = [];
+    kumpulNamaFailPdf_(folder, semuaPdf);
+    const dahRename = semuaPdf.filter(function (n) {
+      return /^\d{12}(-kemahiran)?\.pdf$/i.test(n);
+    }).length;
+    
     for (let i = 1; i < data.length; i++) {
       const ic = String(data[i][2] || '').trim().padStart(12, '0');
       if (!ic || ic.length !== 12) continue;
@@ -153,7 +227,9 @@ function autoLinkLaporan() {
       '✅ Selesai!\n\n' +
       'Slip Keseluruhan diisi: ' + keseluruhan + '\n' +
       'Slip Kemahiran diisi: ' + kemahiran + '\n' +
-      'Tiada fail (perlu semak): ' + tiadaFail
+      'Tiada fail (perlu semak): ' + tiadaFail + '\n\n' +
+      '📂 Fail berformat IC dalam folder: ' + dahRename + '/' + semuaPdf.length + '\n' +
+      '(Yang lain masih nama murid — tunggu guru rename manual, lepas tu run semula.)'
     );
     
   } catch (e) {
