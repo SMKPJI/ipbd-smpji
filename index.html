@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ms" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Carian Laporan PBD — semak dan muat turun laporan Pentaksiran Bilik Darjah murid secara selamat menggunakan No Kad Pengenalan.">
+  <title>Carian Laporan PBD</title>
+  <!-- Skrip anti-kelip tema (mesti sebelum CSS) -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('pbd_tema');
+        if (t === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header sepunya (diisi oleh js/common.js) -->
+  <div id="header-placeholder"></div>
+
+  <main>
+    <!-- Bahagian hero -->
+    <section class="hero">
+      <div class="container hero-inner">
+        <span class="hero-sekolah" id="hero-sekolah">SMK (P) Jalan Ipoh</span>
+        <h1 class="hero-title">Carian Laporan PBD</h1>
+        <p class="hero-sub">Pentaksiran Bilik Darjah — semak dan muat turun laporan murid secara selamat. Masukkan No Kad Pengenalan murid di bawah.</p>
+      </div>
+    </section>
+
+    <div class="container container-narrow">
+      <!-- Kad carian -->
+      <section class="card">
+        <div class="card-icon">🔍</div>
+        <h2>Cari Laporan Anda</h2>
+        <p class="card-sub">Laporan hanya dipaparkan kepada pemilik No IC yang sepadan.</p>
+
+        <form id="form-carian" novalidate>
+          <label class="field-label" for="ic-murid">No Kad Pengenalan (12 digit)</label>
+          <input type="text" id="ic-murid" class="ic-input" inputmode="numeric" autocomplete="off"
+                 maxlength="12" placeholder="Contoh: 090105145678" aria-describedby="nota-ic">
+          <button type="submit" class="btn btn-primary btn-block" id="btn-cari">Cari Laporan</button>
+        </form>
+        <p class="teks-kecil teks-muted teks-pusat" id="nota-ic" style="margin:10px 0 0;">🔒 Data anda dirahsiakan — hanya rekod dengan No IC yang sepadan akan dipaparkan.</p>
+
+        <!-- Keadaan muat -->
+        <div class="loading hidden" id="loading" role="status" aria-live="polite">
+          <span class="spinner"></span>
+          <p>Mencari laporan anda…</p>
+        </div>
+
+        <!-- Keadaan ralat -->
+        <div class="notice notice-error hidden" id="error-format" role="alert">
+          ⚠️ Sila masukkan No IC yang lengkap (12 digit).
+        </div>
+        <div class="notice notice-error hidden" id="error-tiada" role="alert">
+          🔍 Tiada rekod ditemui untuk No IC ini. Sila semak semula.
+          <small>Jika anda yakin maklumat adalah betul, sila hubungi guru kelas anda.</small>
+        </div>
+        <div class="notice notice-error hidden" id="error-api" role="alert">
+          ⚠️ Ralat sambungan. Cuba lagi.
+        </div>
+      </section>
+
+      <!-- Kad hasil carian (disembunyikan sehingga ditemui) -->
+      <section class="result-card hidden" id="hasil-card" aria-live="polite">
+        <div class="result-avatar">👤</div>
+        <span class="result-badge">Laporan PBD Ditemui</span>
+        <h2 id="hasil-nama">—</h2>
+        <p class="result-kelas" id="hasil-kelas">—</p>
+        <div id="hasil-tindakan"></div>
+        <p class="result-nota">🔒 Laporan ini adalah untuk kegunaan murid/ibu bapa sahaja</p>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer sepunya (diisi oleh js/common.js) -->
+  <div id="footer-placeholder"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    (function () {
+      var icInput = null;
+      var formCarian = null;
+      var syncGagal = false;
+
+      function sembunyi(id) {
+        var el = document.getElementById(id);
+        if (el) { el.classList.add('hidden'); }
+      }
+
+      function tunjuk(id) {
+        var el = document.getElementById(id);
+        if (el) { el.classList.remove('hidden'); }
+      }
+
+      function sembunyiSemuaMesej() {
+        ['loading', 'error-format', 'error-tiada', 'error-api'].forEach(sembunyi);
+        sembunyi('hasil-card');
+      }
+
+      function paparHasil(murid) {
+        document.getElementById('hasil-nama').textContent = murid.nama;
+        document.getElementById('hasil-kelas').textContent =
+          'Tingkatan ' + (murid.tingkatan || '-') + ' • Kelas ' + (murid.kelas || '-');
+
+        var tindakan = document.getElementById('hasil-tindakan');
+        var link = String(murid.linkLaporan || '').trim();
+        if (link !== '') {
+          tindakan.innerHTML =
+            '<a class="btn btn-primary btn-block" href="' + esc(link) +
+            '" target="_blank" rel="noopener noreferrer">📥 Buka Laporan PBD</a>';
+        } else {
+          tindakan.innerHTML =
+            '<div class="notice notice-warning">📄 Laporan belum disediakan. Sila hubungi guru kelas anda.</div>';
+        }
+        tunjuk('hasil-card');
+      }
+
+      function cariLaporan(e) {
+        if (e) { e.preventDefault(); }
+        var ic = icInput.value.trim();
+        sembunyiSemuaMesej();
+
+        if (ic.length !== 12) {
+          tunjuk('error-format');
+          icInput.focus();
+          return;
+        }
+
+        tunjuk('loading');
+
+        /* Sedikit kelewatan untuk kesan "mencari" dan membolehkan spinner kelihatan */
+        setTimeout(function () {
+          var murid = cariMurid(ic);
+          sembunyi('loading');
+          if (murid) {
+            paparHasil(murid);
+          } else if (syncGagal) {
+            tunjuk('error-api');
+          } else {
+            tunjuk('error-tiada');
+          }
+        }, 650);
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        icInput = document.getElementById('ic-murid');
+        formCarian = document.getElementById('form-carian');
+
+        /* Hanya terima digit; hadkan kepada 12 aksara */
+        icInput.addEventListener('input', function () {
+          this.value = this.value.replace(/\D/g, '').slice(0, 12);
+        });
+
+        formCarian.addEventListener('submit', cariLaporan);
+
+        document.getElementById('hero-sekolah').textContent = getTetapan().namaSekolah;
+
+        /* Muat data terkini daripada API jika API_URL telah diisi */
+        if (API_URL) {
+          syncDataFromApi().then(function (ok) {
+            syncGagal = !ok;
+            document.getElementById('hero-sekolah').textContent = getTetapan().namaSekolah;
+          });
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

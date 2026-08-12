@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ms" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Panel Semakan — senarai murid dan status link laporan PBD.">
+  <title>Panel Semakan</title>
+  <!-- Skrip anti-kelip tema (mesti sebelum CSS) -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('pbd_tema');
+        if (t === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header sepunya (diisi oleh js/common.js) -->
+  <div id="header-placeholder"></div>
+
+  <main>
+    <div class="container">
+
+      <!-- Kad log masuk (kata laluan pentadbir) -->
+      <section class="card login-card" id="kad-login">
+        <div class="card-icon">🔐</div>
+        <h2>Panel Semakan</h2>
+        <p class="card-sub">Kawasan ini hanya untuk guru / pentadbir sekolah.</p>
+
+        <form id="form-login" novalidate>
+          <label class="field-label" for="pwd-admin">Kata Laluan Pentadbir</label>
+          <input type="password" id="pwd-admin" class="input-biasa" autocomplete="current-password"
+                 placeholder="Masukkan kata laluan">
+          <button type="submit" class="btn btn-primary btn-block" id="btn-masuk">Masuk</button>
+        </form>
+
+        <div class="notice notice-error hidden" id="ralat-login" role="alert">
+          ⚠️ Kata laluan salah. Sila cuba lagi.
+        </div>
+        <p class="teks-kecil teks-muted" style="margin:14px 0 0;">Kata laluan lalai: <strong>admin123</strong> (boleh ditukar dalam Tetapan).</p>
+      </section>
+
+      <!-- Panel semakan (selepas log masuk) -->
+      <section class="hidden" id="panel-admin">
+        <div class="panel-head">
+          <div>
+            <h1>Semakan Murid</h1>
+            <p class="panel-count" id="panel-count">—</p>
+            <p class="teks-kecil teks-muted nota-sync hidden" id="nota-sync"></p>
+          </div>
+          <div class="panel-actions">
+            <input type="search" id="cari-admin" class="input-biasa" placeholder="🔎 Cari nama / No IC…">
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-sync">⟳ Segerakkan</button>
+            <button type="button" class="btn btn-ghost btn-sm btn-keluar" id="btn-logout">Log Keluar</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Bil</th>
+                <th>Nama</th>
+                <th>No IC</th>
+                <th>Tingkatan</th>
+                <th>Kelas</th>
+                <th>Status Link</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-murid"></tbody>
+          </table>
+        </div>
+        <p class="table-empty hidden" id="kosong">Tiada murid ditemui.</p>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Footer sepunya (diisi oleh js/common.js) -->
+  <div id="footer-placeholder"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    (function () {
+      var KUNCI_SESI = 'pbd_admin';
+
+      function formatIc(ic) {
+        ic = String(ic || '').trim();
+        if (ic.length === 12) {
+          return ic.slice(0, 6) + '-' + ic.slice(6, 8) + '-' + ic.slice(8);
+        }
+        return ic;
+      }
+
+      function paparGate() {
+        document.getElementById('kad-login').classList.remove('hidden');
+        document.getElementById('panel-admin').classList.add('hidden');
+        document.getElementById('pwd-admin').value = '';
+        document.getElementById('pwd-admin').focus();
+      }
+
+      function paparPanel() {
+        document.getElementById('kad-login').classList.add('hidden');
+        document.getElementById('panel-admin').classList.remove('hidden');
+        renderJadual();
+      }
+
+      function cubaMasuk(e) {
+        if (e) { e.preventDefault(); }
+        var pwd = document.getElementById('pwd-admin').value;
+        if (pwd === getTetapan().kataLaluanAdmin) {
+          document.getElementById('ralat-login').classList.add('hidden');
+          sessionStorage.setItem(KUNCI_SESI, '1');
+          paparPanel();
+        } else {
+          document.getElementById('ralat-login').classList.remove('hidden');
+        }
+      }
+
+      function renderJadual() {
+        var q = (document.getElementById('cari-admin').value || '').trim().toLowerCase();
+        var semua = getMurid();
+
+        var ditapis = semua.filter(function (m) {
+          if (!q) { return true; }
+          return (m.nama || '').toLowerCase().indexOf(q) !== -1 ||
+                 String(m.ic || '').indexOf(q) !== -1;
+        });
+
+        var adaLink = semua.filter(function (m) {
+          return m.linkLaporan && String(m.linkLaporan).trim() !== '';
+        }).length;
+
+        document.getElementById('panel-count').textContent =
+          adaLink + ' daripada ' + semua.length + ' murid telah ada link';
+
+        var tbody = document.getElementById('tbody-murid');
+        tbody.innerHTML = '';
+
+        ditapis.forEach(function (m, i) {
+          var tr = document.createElement('tr');
+          var ada = m.linkLaporan && String(m.linkLaporan).trim() !== '';
+          var badge = ada
+            ? '<span class="badge badge-ada">Ada</span>'
+            : '<span class="badge badge-tiada">Tiada</span>';
+          tr.innerHTML =
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + esc(m.nama) + '</td>' +
+            '<td class="mono">' + esc(formatIc(m.ic)) + '</td>' +
+            '<td>' + esc(m.tingkatan) + '</td>' +
+            '<td>' + esc(m.kelas) + '</td>' +
+            '<td>' + badge + '</td>';
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('kosong').classList.toggle('hidden', ditapis.length === 0);
+      }
+
+      function segerakkan() {
+        var btn = document.getElementById('btn-sync');
+        var nota = document.getElementById('nota-sync');
+        btn.disabled = true;
+        btn.textContent = 'Menyegerakkan…';
+        nota.classList.add('hidden');
+        syncDataFromApi().then(function (ok) {
+          btn.disabled = false;
+          btn.textContent = '⟳ Segerakkan';
+          if (!API_URL) {
+            nota.textContent = 'ℹ️ Tiada API_URL — menggunakan data setempat.';
+          } else if (ok) {
+            nota.textContent = '✓ Data dikemas kini.';
+          } else {
+            nota.textContent = '✗ Ralat sambungan. Cuba lagi.';
+          }
+          nota.classList.remove('hidden');
+          renderJadual();
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('form-login').addEventListener('submit', cubaMasuk);
+        document.getElementById('btn-masuk').addEventListener('click', cubaMasuk);
+        document.getElementById('cari-admin').addEventListener('input', renderJadual);
+        document.getElementById('btn-sync').addEventListener('click', segerakkan);
+        document.getElementById('btn-logout').addEventListener('click', function () {
+          sessionStorage.removeItem(KUNCI_SESI);
+          location.reload();
+        });
+
+        if (sessionStorage.getItem(KUNCI_SESI) === '1') {
+          paparPanel();
+        } else {
+          paparGate();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
