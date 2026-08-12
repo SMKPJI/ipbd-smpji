@@ -113,15 +113,21 @@
           'Tingkatan ' + (murid.tingkatan || '-') + ' • Kelas ' + (murid.kelas || '-');
 
         var tindakan = document.getElementById('hasil-tindakan');
-        var link = String(murid.linkLaporan || '').trim();
-        if (link !== '') {
-          tindakan.innerHTML =
-            '<a class="btn btn-primary btn-block" href="' + esc(link) +
-            '" target="_blank" rel="noopener noreferrer">📥 Buka Laporan PBD</a>';
-        } else {
-          tindakan.innerHTML =
-            '<div class="notice notice-warning">📄 Laporan belum disediakan. Sila hubungi guru kelas anda.</div>';
+        var link1 = String(murid.linkKeseluruhan || murid.linkLaporan || '').trim();
+        var link2 = String(murid.linkKemahiran || '').trim();
+        var html = '';
+        if (link1 !== '') {
+          html += '<a class="btn btn-primary btn-block" href="' + esc(link1) +
+            '" target="_blank" rel="noopener noreferrer">📥 Slip PBD Keseluruhan</a>';
         }
+        if (link2 !== '') {
+          html += '<a class="btn btn-secondary btn-block" href="' + esc(link2) +
+            '" target="_blank" rel="noopener noreferrer">📊 Slip Kemahiran</a>';
+        }
+        if (html === '') {
+          html = '<div class="notice notice-warning">📄 Laporan belum disediakan. Sila hubungi guru kelas anda.</div>';
+        }
+        tindakan.innerHTML = html;
         tunjuk('hasil-card');
       }
 

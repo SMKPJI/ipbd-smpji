@@ -42,7 +42,7 @@ function setupSheet() {
   sheetPertama.setName(CONFIG.SHEETS.TETAPAN);
   
   setupTab(ss, CONFIG.SHEETS.TETAPAN, ['Kunci', 'Nilai'], [200, 300]);
-  setupTab(ss, CONFIG.SHEETS.MURID, ['ID', 'Nama', 'NoIC', 'Tingkatan', 'Kelas', 'LinkLaporan'], [80, 250, 130, 100, 120, 350]);
+  setupTab(ss, CONFIG.SHEETS.MURID, ['ID', 'Nama', 'NoIC', 'Tingkatan', 'Kelas', 'LinkKeseluruhan', 'LinkKemahiran'], [80, 250, 130, 100, 120, 350, 350]);
   
   seedData(ss);
   SpreadsheetApp.getUi().alert('✅ Setup siap! Set folderLaporan dalam tab Tetapan, lepas tu run autoLinkLaporan().');
@@ -73,25 +73,33 @@ function seedData(ss) {
 
   const m = ss.getSheetByName(CONFIG.SHEETS.MURID);
   const murid = [
-    ['m01', 'Ahmad Faiz bin Razak', '010203040506', '1', 'Amanah', ''],
-    ['m02', 'Siti Aminah binti Kamal', '020304050607', '1', 'Amanah', ''],
-    ['m03', 'Muhammad Hakim bin Zainal', '030405060708', '1', 'Bestari', ''],
-    ['m04', 'Nur Aisyah binti Omar', '040506070809', '1', 'Bestari', ''],
-    ['m05', 'Lim Wei Jie', '050607080910', '1', 'Cemerlang', ''],
-    ['m06', 'Tan Mei Ling', '060708091011', '1', 'Cemerlang', ''],
-    ['m07', 'Kavinesh a/l Murugan', '070809101112', '2', 'Amanah', ''],
-    ['m08', 'Nurul Izzah binti Hassan', '080910111213', '2', 'Amanah', ''],
-    ['m09', 'Faris Daniel bin Azman', '091011121314', '2', 'Bestari', ''],
-    ['m10', 'Aina Sofea binti Rahman', '101112131415', '2', 'Bestari', '']
+    ['m01', 'Ahmad Faiz bin Razak', '010203040506', '1', 'Amanah', '', ''],
+    ['m02', 'Siti Aminah binti Kamal', '020304050607', '1', 'Amanah', '', ''],
+    ['m03', 'Muhammad Hakim bin Zainal', '030405060708', '1', 'Bestari', '', ''],
+    ['m04', 'Nur Aisyah binti Omar', '040506070809', '1', 'Bestari', '', ''],
+    ['m05', 'Lim Wei Jie', '050607080910', '1', 'Cemerlang', '', ''],
+    ['m06', 'Tan Mei Ling', '060708091011', '1', 'Cemerlang', '', ''],
+    ['m07', 'Kavinesh a/l Murugan', '070809101112', '2', 'Amanah', '', ''],
+    ['m08', 'Nurul Izzah binti Hassan', '080910111213', '2', 'Amanah', '', ''],
+    ['m09', 'Faris Daniel bin Azman', '091011121314', '2', 'Bestari', '', ''],
+    ['m10', 'Aina Sofea binti Rahman', '101112131415', '2', 'Bestari', '', '']
   ];
-  m.getRange(2, 1, murid.length, 6).setValues(murid);
+  m.getRange(2, 1, murid.length, 7).setValues(murid);
 }
 
 // ============================================================
 // ⭐ AUTO-LINK LAPORAN — TOLONG JANGAN BUAT MANUAL!
 // ============================================================
 // Padankan fail PDF dalam Google Drive dengan murid guna No IC
-// dalam nama fail. Format nama fail: <Nama>-<NoIC>.pdf
+// dalam nama fail. Scan RECURSIVE — masuk semua sub-folder.
+//
+// Format nama fail:
+//   Slip Keseluruhan: <NoIC>.pdf              → 010203040506.pdf
+//   Slip Kemahiran:   <NoIC>-kemahiran.pdf    → 010203040506-kemahiran.pdf
+//   ("KEMAHIRAN"/"Kemahiran"/"kemahiran" semua diterima — case tak kira)
+//
+// Struktur folder (ikut cikgu PBD):
+//   PBD > 2026 > SLIP PAT/UASA | SLIP PPT > TINGKATAN x > KELAS
 // ============================================================
 function autoLinkLaporan() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -105,39 +113,37 @@ function autoLinkLaporan() {
   
   try {
     const folder = DriveApp.getFolderById(folderId);
-    const files = folder.getFiles();
     
-    // Kumpul semua fail + no IC dalam nama fail
-    const failByIC = {};
-    while (files.hasNext()) {
-      const file = files.next();
-      const nama = file.getName();
-      // Cari 12 digit (No IC) dalam nama fail
-      const match = nama.match(/(\d{12})/);
-      if (match) {
-        failByIC[match[1]] = file;
-      }
-    }
+    // Kumpul semua fail secara recursive (masuk semua sub-folder)
+    const failByIC = {};       // IC -> { keseluruhan: file, kemahiran: file }
+    scanFolder_(folder, failByIC);
     
     // Padankan dengan murid dalam sheet
     const sheet = ss.getSheetByName(CONFIG.SHEETS.MURID);
     const data = sheet.getDataRange().getValues();
-    let dijumpai = 0;
+    let keseluruhan = 0;
+    let kemahiran = 0;
     let tiadaFail = 0;
     
     for (let i = 1; i < data.length; i++) {
-      const ic = String(data[i][2] || '').trim();
-      if (!ic) continue;
+      const ic = String(data[i][2] || '').trim().padStart(12, '0');
+      if (!ic || ic.length !== 12) continue;
       
-      if (failByIC[ic]) {
-        const file = failByIC[ic];
-        // Pastikan sharing "Anyone with link" supaya website boleh buka
-        try {
-          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        } catch (e) { /* abaikan jika tak boleh */ }
-        const url = 'https://drive.google.com/file/d/' + file.getId() + '/view';
-        sheet.getRange(i + 1, 6).setValue(url);
-        dijumpai++;
+      const jumpa = failByIC[ic];
+      if (jumpa) {
+        if (jumpa.keseluruhan) {
+          const file = jumpa.keseluruhan;
+          try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+          sheet.getRange(i + 1, 6).setValue('https://drive.google.com/file/d/' + file.getId() + '/view');
+          keseluruhan++;
+        }
+        if (jumpa.kemahiran) {
+          const file = jumpa.kemahiran;
+          try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+          sheet.getRange(i + 1, 7).setValue('https://drive.google.com/file/d/' + file.getId() + '/view');
+          kemahiran++;
+        }
+        if (!jumpa.keseluruhan && !jumpa.kemahiran) tiadaFail++;
       } else {
         tiadaFail++;
       }
@@ -145,12 +151,44 @@ function autoLinkLaporan() {
     
     SpreadsheetApp.getUi().alert(
       '✅ Selesai!\n\n' +
-      'Link dijumpai & diisi: ' + dijumpai + ' murid\n' +
-      'Tiada fail (perlu semak): ' + tiadaFail + ' murid'
+      'Slip Keseluruhan diisi: ' + keseluruhan + '\n' +
+      'Slip Kemahiran diisi: ' + kemahiran + '\n' +
+      'Tiada fail (perlu semak): ' + tiadaFail
     );
     
   } catch (e) {
     SpreadsheetApp.getUi().alert('❌ Ralat: ' + e.toString());
+  }
+}
+
+// Scan folder + semua sub-folder, kumpul fail mengikut IC
+function scanFolder_(folder, failByIC) {
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    const nama = file.getName().toLowerCase();
+    
+    // Slip keseluruhan: <12 digit>.pdf
+    let match = nama.match(/^(\d{12})\.pdf$/);
+    if (match) {
+      if (!failByIC[match[1]]) failByIC[match[1]] = {};
+      failByIC[match[1]].keseluruhan = file;
+      continue;
+    }
+    
+    // Slip kemahiran: <12 digit>-kemahiran.pdf (case tak kira)
+    match = nama.match(/^(\d{12})-kemahiran\.pdf$/);
+    if (match) {
+      if (!failByIC[match[1]]) failByIC[match[1]] = {};
+      failByIC[match[1]].kemahiran = file;
+      continue;
+    }
+  }
+  
+  // Recurse sub-folder
+  const subFolders = folder.getFolders();
+  while (subFolders.hasNext()) {
+    scanFolder_(subFolders.next(), failByIC);
   }
 }
 

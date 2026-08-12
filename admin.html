@@ -136,7 +136,7 @@
         });
 
         var adaLink = semua.filter(function (m) {
-          return m.linkLaporan && String(m.linkLaporan).trim() !== '';
+          return (m.linkKeseluruhan || m.linkLaporan) && String(m.linkKeseluruhan || m.linkLaporan).trim() !== '';
         }).length;
 
         document.getElementById('panel-count').textContent =
@@ -147,7 +147,7 @@
 
         ditapis.forEach(function (m, i) {
           var tr = document.createElement('tr');
-          var ada = m.linkLaporan && String(m.linkLaporan).trim() !== '';
+          var ada = (m.linkKeseluruhan || m.linkLaporan) && String(m.linkKeseluruhan || m.linkLaporan).trim() !== '';
           var badge = ada
             ? '<span class="badge badge-ada">Ada</span>'
             : '<span class="badge badge-tiada">Tiada</span>';

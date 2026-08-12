@@ -41,7 +41,8 @@ var MOCK_MURID = [
     ic: '090105145678',
     tingkatan: '1',
     kelas: 'Amanah',
-    linkLaporan: 'https://drive.google.com/file/d/1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV/view'
+    linkLaporan: 'https://drive.google.com/file/d/1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV/view',
+    linkKemahiran: 'https://drive.google.com/file/d/1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uW/view'
   },
   {
     id: 'm-002',
@@ -89,7 +90,8 @@ var MOCK_MURID = [
     ic: '100501128899',
     tingkatan: '1',
     kelas: 'Dedikasi',
-    linkLaporan: 'https://drive.google.com/file/d/9xY8zW7vU6tS5rQ4pO3nM2lK1jH0gF9eD/view'
+    linkLaporan: 'https://drive.google.com/file/d/9xY8zW7vU6tS5rQ4pO3nM2lK1jH0gF9eD/view',
+    linkKemahiran: 'https://drive.google.com/file/d/9xY8zW7vU6tS5rQ4pO3nM2lK1jH0gF9eE/view'
   },
   {
     id: 'm-008',
@@ -203,7 +205,8 @@ function mapMuridDariApi(row) {
     ic: String(row.NoIC || '').trim().padStart(12, '0'),
     tingkatan: row.Tingkatan != null ? String(row.Tingkatan) : '',
     kelas: row.Kelas || '',
-    linkLaporan: row.LinkLaporan || ''
+    linkKeseluruhan: row.LinkKeseluruhan || row.LinkLaporan || '',
+    linkKemahiran: row.LinkKemahiran || ''
   };
 }
 
