@@ -255,7 +255,14 @@ function getData_(ss, sheetName) {
   for (let i = 1; i < values.length; i++) {
     if (values[i].every(c => c === '')) continue;
     const obj = {};
-    headers.forEach((h, idx) => { obj[h] = values[i][idx]; });
+    headers.forEach((h, idx) => {
+      let v = values[i][idx];
+      // NoIC: pastikan kekal 12 digit (0 depan tidak hilang)
+      if (/noic/i.test(h) && v !== '') {
+        v = String(v).trim().padStart(12, '0');
+      }
+      obj[h] = v;
+    });
     rows.push(obj);
   }
   return rows;

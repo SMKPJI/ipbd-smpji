@@ -12,7 +12,7 @@
    Isi API_URL dengan URL Web App Google Apps Script, contoh:
    'https://script.google.com/macros/s/ABCDEFGHIJKLMNOPQRSTUVWXYZ/exec'
    Biarkan kosong ('') untuk guna data mock setempat sahaja. */
-var API_URL = '';
+var API_URL = 'https://script.google.com/macros/s/AKfycbzt2vVdFanrBMJJw-ORSTSBNf-a-JdFr8xZNjIACDRlT6QHT5y3uAPp7cRMGrbo4mYV2A/exec';
 
 /* ---------- 2. Kunci & versi localStorage ---------- */
 var KEY_MURID = 'pbd_murid';
@@ -191,12 +191,16 @@ function cariMurid(ic) {
   return null;
 }
 
-/* ---------- 9. Pemetaan baris API -> bentuk aplikasi ---------- */
+/* Petakan baris daripada API (kekunci = nama header sheet)
+   kepada bentuk aplikasi (huruf kecil) supaya UI tidak
+   terdedah kepada nama header sheet. */
 function mapMuridDariApi(row) {
   return {
     id: String(row.ID != null ? row.ID : '').toLowerCase() || ('api-' + Math.random().toString(36).slice(2, 8)),
     nama: row.Nama || '',
-    ic: String(row.NoIC || '').trim(),
+    /* Google Sheets simpan NoIC sebagai nombor → 0 depan hilang.
+       Pad semula ke 12 digit supaya carian IC berfungsi. */
+    ic: String(row.NoIC || '').trim().padStart(12, '0'),
     tingkatan: row.Tingkatan != null ? String(row.Tingkatan) : '',
     kelas: row.Kelas || '',
     linkLaporan: row.LinkLaporan || ''
