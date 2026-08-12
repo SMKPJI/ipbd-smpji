@@ -18,7 +18,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbzt2vVdFanrBMJJw-ORSTSBNf
 var KEY_MURID = 'pbd_murid';
 var KEY_TETAPAN = 'pbd_tetapan';
 var KEY_VERSI = 'pbd_versi';
-var DATA_VERSI = '1.0.0';
+var DATA_VERSI = '1.1.0';
 
 /* ---------- 3. Data mock: Tetapan ----------
    Semua nilai ini boleh ditimpa oleh Google Sheet melalui syncDataFromApi(). */
