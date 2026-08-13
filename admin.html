@@ -195,10 +195,18 @@
           location.reload();
         });
 
+        /* Render semula jadual bila data disegerakkan daripada API */
+        window.addEventListener('pbd:synced', renderJadual);
+
         if (sessionStorage.getItem(KUNCI_SESI) === '1') {
           paparPanel();
         } else {
           paparGate();
+        }
+
+        /* Muat data terkini daripada API secara automatik */
+        if (API_URL) {
+          syncDataFromApi();
         }
       });
     })();
