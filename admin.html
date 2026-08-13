@@ -71,7 +71,8 @@
                 <th>No IC</th>
                 <th>Tingkatan</th>
                 <th>Kelas</th>
-                <th>Status Link</th>
+                <th>Slip Keseluruhan</th>
+                <th>Slip Kemahiran</th>
               </tr>
             </thead>
             <tbody id="tbody-murid"></tbody>
@@ -135,20 +136,28 @@
                  String(m.ic || '').indexOf(q) !== -1;
         });
 
-        var adaLink = semua.filter(function (m) {
+        var adaKeseluruhan = semua.filter(function (m) {
           return (m.linkKeseluruhan || m.linkLaporan) && String(m.linkKeseluruhan || m.linkLaporan).trim() !== '';
+        }).length;
+        var adaKemahiran = semua.filter(function (m) {
+          return m.linkKemahiran && String(m.linkKemahiran).trim() !== '';
         }).length;
 
         document.getElementById('panel-count').textContent =
-          adaLink + ' daripada ' + semua.length + ' murid telah ada link';
+          adaKeseluruhan + ' keseluruhan • ' + adaKemahiran + ' kemahiran • ' +
+          semua.length + ' murid';
 
         var tbody = document.getElementById('tbody-murid');
         tbody.innerHTML = '';
 
         ditapis.forEach(function (m, i) {
           var tr = document.createElement('tr');
-          var ada = (m.linkKeseluruhan || m.linkLaporan) && String(m.linkKeseluruhan || m.linkLaporan).trim() !== '';
-          var badge = ada
+          var ada1 = (m.linkKeseluruhan || m.linkLaporan) && String(m.linkKeseluruhan || m.linkLaporan).trim() !== '';
+          var ada2 = m.linkKemahiran && String(m.linkKemahiran).trim() !== '';
+          var badge1 = ada1
+            ? '<span class="badge badge-ada">Ada</span>'
+            : '<span class="badge badge-tiada">Tiada</span>';
+          var badge2 = ada2
             ? '<span class="badge badge-ada">Ada</span>'
             : '<span class="badge badge-tiada">Tiada</span>';
           tr.innerHTML =
@@ -157,7 +166,8 @@
             '<td class="mono">' + esc(formatIc(m.ic)) + '</td>' +
             '<td>' + esc(m.tingkatan) + '</td>' +
             '<td>' + esc(m.kelas) + '</td>' +
-            '<td>' + badge + '</td>';
+            '<td>' + badge1 + '</td>' +
+            '<td>' + badge2 + '</td>';
           tbody.appendChild(tr);
         });
 
